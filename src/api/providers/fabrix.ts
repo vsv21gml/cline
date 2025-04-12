@@ -15,6 +15,7 @@ interface ChatRequest {
 	llmId: number
 	contents: string[]
 	isStream: boolean
+	systemPrompt: string
 }
 
 interface ChatResponse {
@@ -67,7 +68,9 @@ class AbortableAsyncIterator<T extends object> {
 				return
 			}
 		}
-		throw new Error("Did not receive done or success response in stream.")
+		// throw new Error("Did not receive done or success response in stream.")
+		this.doneCallback()
+		return
 	}
 }
 
@@ -109,6 +112,7 @@ export class FabrixHandler implements ApiHandler {
 		const body: ChatRequest = {
 			llmId: Number(this.options.fabrixModelId),
 			contents: messages.map((message) => String(message.content)),
+			systemPrompt,
 			isStream: true,
 		}
 
