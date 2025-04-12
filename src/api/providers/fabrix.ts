@@ -5,10 +5,11 @@ import { ApiHandlerOptions, ModelInfo, openAiModelInfoSaneDefaults } from "../..
 import { convertToOpenAiMessages } from "../transform/openai-format"
 import { ApiStream } from "../transform/stream"
 import { Transform, TransformCallback } from "node:stream"
-
-import "whatwg-fetch"
-
 import { withRetry } from "../retry"
+
+import axios from "axios"
+import * as readline from "readline"
+import { Readable } from "stream"
 
 interface ChatRequest {
 	llmId: number
@@ -70,33 +71,19 @@ class AbortableAsyncIterator<T extends object> {
 	}
 }
 
-const parseJSON = async function* <T = unknown>(itr: ReadableStream<Uint8Array>): AsyncGenerator<T> {
-	const decoder = new TextDecoder("utf-8")
-	let buffer = ""
-	const reader = itr.getReader()
-	while (true) {
-		const { done, value: chunk } = await reader.read()
-		if (done) {
-			break
-		}
-		buffer += decoder.decode(chunk)
-		const parts = buffer.split("\n")
-		buffer = parts.pop() ?? ""
+async function* streamToAsyncGenerator<T = any>(stream: Readable): AsyncGenerator<T> {
+	const rl = readline.createInterface({
+		input: stream,
+		crlfDelay: Infinity,
+	})
 
-		for (const part of parts) {
+	for await (const line of rl) {
+		if (line.trim()) {
 			try {
-				yield JSON.parse(part)
-			} catch (error) {
-				console.warn("invalid json: ", part)
+				yield JSON.parse(line) as T
+			} catch (err) {
+				console.error("JSON 파싱 오류:", err)
 			}
-		}
-	}
-
-	for (const part of buffer.split("\n").filter((p) => p !== "")) {
-		try {
-			yield JSON.parse(part)
-		} catch (error) {
-			console.warn("invalid json: ", part)
 		}
 	}
 }
@@ -124,20 +111,20 @@ export class FabrixHandler implements ApiHandler {
 			contents: messages.map((message) => String(message.content)),
 			isStream: true,
 		}
-		const response = await fetch(url, {
-			method: "POST",
-			body: JSON.stringify(body),
+
+		const response = await axios.post(url, body, {
 			headers: {
 				"x-generative-ai-client": String(this.options.fabrixToken),
 			},
 			signal: abortController.signal,
+			responseType: "stream",
 		})
 
-		if (!response.body) {
+		if (!response.data) {
 			throw new Error("Missing body")
 		}
 
-		const itr = parseJSON<T | ErrorResponse>(response.body)
+		const itr = streamToAsyncGenerator<T | ErrorResponse>(response.data)
 		const abortableAsyncIterator = new AbortableAsyncIterator(abortController, itr, () => {
 			const i = this.ongoingStreamedRequests.indexOf(abortableAsyncIterator)
 			if (i > -1) {
@@ -147,18 +134,6 @@ export class FabrixHandler implements ApiHandler {
 		this.ongoingStreamedRequests.push(abortableAsyncIterator)
 		return abortableAsyncIterator
 	}
-
-	// async *createMessage(systemPrompt: string, messages: Anthropic.Messages.MessageParam[]): ApiStream {
-	// 	const stream = await this.chat(systemPrompt, messages)
-	// 	for await (const chunk of stream) {
-	// 		if (typeof chunk.content === "string") {
-	// 			yield {
-	// 				type: "text",
-	// 				text: chunk.content,
-	// 			}
-	// 		}
-	// 	}
-	// }
 
 	@withRetry({ retryAllErrors: true })
 	async *createMessage(systemPrompt: string, messages: Anthropic.Messages.MessageParam[]): ApiStream {
