@@ -20,6 +20,7 @@ export type ApiProvider =
 	| "asksage"
 	| "xai"
 	| "sambanova"
+	| "fabrix"
 
 export interface ApiHandlerOptions {
 	apiModelId?: string
@@ -76,6 +77,10 @@ export interface ApiHandlerOptions {
 	thinkingBudgetTokens?: number
 	reasoningEffort?: string
 	sambanovaApiKey?: string
+	fabrixModelId?: string
+	fabrixBaseUrl?: string
+	fabrixToken?: string
+	fabrixApimToken?: string
 }
 
 export type ApiConfiguration = ApiHandlerOptions & {

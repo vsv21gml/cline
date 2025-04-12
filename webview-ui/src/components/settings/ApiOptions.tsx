@@ -103,6 +103,7 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage, is
 	const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false)
 	const [providerSortingSelected, setProviderSortingSelected] = useState(!!apiConfiguration?.openRouterProviderSorting)
 	const [reasoningEffortSelected, setReasoningEffortSelected] = useState(!!apiConfiguration?.reasoningEffort)
+	const [fabrixModels, setFabrixModels] = useState<{ id: string; name: string }[]>([])
 
 	const handleInputChange = (field: keyof ApiConfiguration) => (event: any) => {
 		const newValue = event.target.value
@@ -144,16 +145,40 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage, is
 			})
 		} else if (selectedProvider === "vscode-lm") {
 			vscode.postMessage({ type: "requestVsCodeLmModels" })
+		} else if (selectedProvider === "fabrix") {
+			vscode.postMessage({
+				type: "requestFabrixModels",
+				text: JSON.stringify({
+					url: apiConfiguration?.fabrixBaseUrl,
+					token: apiConfiguration?.fabrixToken,
+				}),
+			})
 		}
-	}, [selectedProvider, apiConfiguration?.ollamaBaseUrl, apiConfiguration?.lmStudioBaseUrl])
+	}, [
+		selectedProvider,
+		apiConfiguration?.ollamaBaseUrl,
+		apiConfiguration?.lmStudioBaseUrl,
+		apiConfiguration?.fabrixBaseUrl,
+		apiConfiguration?.fabrixToken,
+	])
 	useEffect(() => {
-		if (selectedProvider === "ollama" || selectedProvider === "lmstudio" || selectedProvider === "vscode-lm") {
+		if (
+			selectedProvider === "ollama" ||
+			selectedProvider === "lmstudio" ||
+			selectedProvider === "vscode-lm" ||
+			selectedProvider === "fabrix"
+		) {
 			requestLocalModels()
 		}
 	}, [selectedProvider, requestLocalModels])
 	useInterval(
 		requestLocalModels,
-		selectedProvider === "ollama" || selectedProvider === "lmstudio" || selectedProvider === "vscode-lm" ? 2000 : null,
+		selectedProvider === "ollama" ||
+			selectedProvider === "lmstudio" ||
+			selectedProvider === "vscode-lm" ||
+			selectedProvider === "fabrix"
+			? 2000
+			: null,
 	)
 
 	const handleMessage = useCallback((event: MessageEvent) => {
@@ -164,6 +189,8 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage, is
 			setLmStudioModels(message.lmStudioModels)
 		} else if (message.type === "vsCodeLmModels" && message.vsCodeLmModels) {
 			setVsCodeLmModels(message.vsCodeLmModels)
+		} else if (message.type === "fabrixModels" && message.fabrixModels) {
+			setFabrixModels(message.fabrixModels)
 		}
 	}, [])
 	useEvent("message", handleMessage)
@@ -235,6 +262,7 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage, is
 					<VSCodeOption value="asksage">AskSage</VSCodeOption>
 					<VSCodeOption value="xai">xAI</VSCodeOption>
 					<VSCodeOption value="sambanova">SambaNova</VSCodeOption>
+					<VSCodeOption value="fabrix">Fabrix</VSCodeOption>
 				</VSCodeDropdown>
 			</DropdownContainer>
 
@@ -1436,6 +1464,75 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage, is
 				</div>
 			)}
 
+			{selectedProvider === "fabrix" && (
+				<div>
+					<VSCodeTextField
+						value={apiConfiguration?.fabrixBaseUrl || ""}
+						style={{ width: "100%" }}
+						type="url"
+						onInput={handleInputChange("fabrixBaseUrl")}
+						placeholder={"Default: https://fabrix.com"}>
+						<span style={{ fontWeight: 500 }}>Base URL (required)</span>
+					</VSCodeTextField>
+					<VSCodeTextField
+						value={apiConfiguration?.fabrixToken || ""}
+						style={{ width: "100%" }}
+						onInput={handleInputChange("fabrixToken")}
+						placeholder={"x-generative-ai-client"}>
+						<span style={{ fontWeight: 500 }}>fabrix token (required)</span>
+					</VSCodeTextField>
+					<VSCodeTextField
+						value={apiConfiguration?.fabrixApimToken || ""}
+						style={{ width: "100%" }}
+						onInput={handleInputChange("fabrixApimToken")}
+						placeholder={"x-openapi-token"}>
+						<span style={{ fontWeight: 500 }}>apim token (required)</span>
+					</VSCodeTextField>
+					<VSCodeTextField
+						value={apiConfiguration?.fabrixModelId || ""}
+						style={{ width: "100%" }}
+						onInput={handleInputChange("fabrixModelId")}
+						readOnly={true}
+						placeholder={"search model..."}>
+						<span style={{ fontWeight: 500 }}>Model ID (required)</span>
+					</VSCodeTextField>
+					{fabrixModels.length > 0 && (
+						<VSCodeRadioGroup
+							value={
+								fabrixModels.map((model) => model.id).includes(apiConfiguration?.fabrixModelId || "")
+									? apiConfiguration?.fabrixModelId
+									: ""
+							}
+							onChange={(e) => {
+								const value = (e.target as HTMLInputElement)?.value
+								// need to check value first since radio group returns empty string sometimes
+								if (value) {
+									handleInputChange("fabrixModelId")({
+										target: { value },
+									})
+								}
+							}}>
+							{fabrixModels.map((model) => (
+								<VSCodeRadio
+									key={model.id}
+									value={model.id}
+									checked={apiConfiguration?.fabrixModelId === model.id}>
+									{model.name}
+								</VSCodeRadio>
+							))}
+						</VSCodeRadioGroup>
+					)}
+					<p
+						style={{
+							fontSize: "12px",
+							marginTop: "5px",
+							color: "var(--vscode-descriptionForeground)",
+						}}>
+						fabrix chat connector
+					</p>
+				</div>
+			)}
+
 			{apiErrorMessage && (
 				<p
 					style={{
@@ -1506,6 +1603,7 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage, is
 				selectedProvider !== "vscode-lm" &&
 				selectedProvider !== "litellm" &&
 				selectedProvider !== "requesty" &&
+				selectedProvider !== "fabrix" &&
 				showModelOptions && (
 					<>
 						<DropdownContainer zIndex={DROPDOWN_Z_INDEX - 2} className="dropdown-container">
@@ -1905,6 +2003,12 @@ export function normalizeApiConfiguration(apiConfiguration?: ApiConfiguration): 
 			return getProviderData(xaiModels, xaiDefaultModelId)
 		case "sambanova":
 			return getProviderData(sambanovaModels, sambanovaDefaultModelId)
+		case "fabrix":
+			return {
+				selectedProvider: provider,
+				selectedModelId: apiConfiguration?.fabrixModelId || "",
+				selectedModelInfo: openAiModelInfoSaneDefaults,
+			}
 		default:
 			return getProviderData(anthropicModels, anthropicDefaultModelId)
 	}

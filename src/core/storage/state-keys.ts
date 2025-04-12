@@ -71,3 +71,7 @@ export type GlobalStateKey =
 	| "reasoningEffort"
 	| "planActSeparateModelsSetting"
 	| "favoritedModelIds"
+	| "fabrixModelId"
+	| "fabrixBaseUrl"
+	| "fabrixToken"
+	| "fabrixApimToken"

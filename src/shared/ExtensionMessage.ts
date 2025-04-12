@@ -49,6 +49,7 @@ export interface ExtensionMessage {
 		| "browserRelaunchResult"
 		| "relativePathsResponse" // Handles single and multiple path responses
 		| "fileSearchResults"
+		| "fabrixModels"
 	text?: string
 	paths?: (string | null)[] // Used for relativePathsResponse
 	action?:
@@ -109,6 +110,7 @@ export interface ExtensionMessage {
 		error?: string
 	}
 	tab?: McpViewTab
+	fabrixModels?: { id: string; name: string }[]
 }
 
 export type Invoke = "sendMessage" | "primaryButtonClick" | "secondaryButtonClick"

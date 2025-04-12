@@ -835,6 +835,8 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 					return `${selectedProvider}:${apiConfiguration.ollamaModelId}`
 				case "litellm":
 					return `${selectedProvider}:${apiConfiguration.liteLlmModelId}`
+				case "fabrix":
+					return `${selectedProvider}:${apiConfiguration.fabrixModelId}`
 				case "requesty":
 				case "anthropic":
 				case "openrouter":

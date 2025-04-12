@@ -121,6 +121,10 @@ export async function getAllExtensionState(context: vscode.ExtensionContext) {
 		sambanovaApiKey,
 		planActSeparateModelsSettingRaw,
 		favoritedModelIds,
+		fabrixModelId,
+		fabrixBaseUrl,
+		fabrixToken,
+		fabrixApimToken,
 	] = await Promise.all([
 		getGlobalState(context, "apiProvider") as Promise<ApiProvider | undefined>,
 		getGlobalState(context, "apiModelId") as Promise<string | undefined>,
@@ -191,6 +195,10 @@ export async function getAllExtensionState(context: vscode.ExtensionContext) {
 		getSecret(context, "sambanovaApiKey") as Promise<string | undefined>,
 		getGlobalState(context, "planActSeparateModelsSetting") as Promise<boolean | undefined>,
 		getGlobalState(context, "favoritedModelIds") as Promise<string[] | undefined>,
+		getGlobalState(context, "fabrixModelId") as Promise<string | undefined>,
+		getGlobalState(context, "fabrixBaseUrl") as Promise<string | undefined>,
+		getGlobalState(context, "fabrixToken") as Promise<string | undefined>,
+		getGlobalState(context, "fabrixApimToken") as Promise<string | undefined>,
 	])
 
 	let apiProvider: ApiProvider
@@ -286,6 +294,10 @@ export async function getAllExtensionState(context: vscode.ExtensionContext) {
 			xaiApiKey,
 			sambanovaApiKey,
 			favoritedModelIds,
+			fabrixModelId,
+			fabrixBaseUrl,
+			fabrixToken,
+			fabrixApimToken,
 		},
 		lastShownAnnouncementId,
 		customInstructions,
@@ -362,6 +374,10 @@ export async function updateApiConfiguration(context: vscode.ExtensionContext, a
 		clineApiKey,
 		sambanovaApiKey,
 		favoritedModelIds,
+		fabrixModelId,
+		fabrixBaseUrl,
+		fabrixToken,
+		fabrixApimToken,
 	} = apiConfiguration
 	await updateGlobalState(context, "apiProvider", apiProvider)
 	await updateGlobalState(context, "apiModelId", apiModelId)
@@ -417,6 +433,10 @@ export async function updateApiConfiguration(context: vscode.ExtensionContext, a
 	await storeSecret(context, "clineApiKey", clineApiKey)
 	await storeSecret(context, "sambanovaApiKey", sambanovaApiKey)
 	await updateGlobalState(context, "favoritedModelIds", favoritedModelIds)
+	await updateGlobalState(context, "fabrixModelId", fabrixModelId)
+	await updateGlobalState(context, "fabrixBaseUrl", fabrixBaseUrl)
+	await updateGlobalState(context, "fabrixToken", fabrixToken)
+	await updateGlobalState(context, "fabrixApimToken", fabrixApimToken)
 }
 
 export async function resetExtensionState(context: vscode.ExtensionContext) {

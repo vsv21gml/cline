@@ -919,6 +919,14 @@ export class Controller {
 				}
 				break
 			}
+			case "requestFabrixModels":
+				const fabrixMessage = JSON.parse(message.text || "{}")
+				const fabrixModels = await this.getFabrixModels(fabrixMessage.url, fabrixMessage.token)
+				this.postMessageToWebview({
+					type: "fabrixModels",
+					fabrixModels,
+				})
+				break
 			// Add more switch case statements here as more webview message commands
 			// are created within the webview context (i.e. inside media/main.js)
 		}
@@ -997,6 +1005,9 @@ export class Controller {
 					await updateGlobalState(this.context, "previousModeModelId", apiConfiguration.requestyModelId)
 					await updateGlobalState(this.context, "previousModeModelInfo", apiConfiguration.requestyModelInfo)
 					break
+				case "fabrix":
+					await updateGlobalState(this.context, "previousModeModelId", apiConfiguration.fabrixModelId)
+					break
 			}
 
 			// Restore the model used in previous mode
@@ -1046,6 +1057,9 @@ export class Controller {
 					case "requesty":
 						await updateGlobalState(this.context, "requestyModelId", newModelId)
 						await updateGlobalState(this.context, "requestyModelInfo", newModelInfo)
+						break
+					case "fabrix":
+						await updateGlobalState(this.context, "fabrixModelId", newModelId)
 						break
 				}
 
@@ -1215,6 +1229,34 @@ export class Controller {
 			return models
 		} catch (error) {
 			return []
+		}
+	}
+
+	// Fabrix
+
+	async getFabrixModels(baseUrl?: string, token?: string) {
+		try {
+			if (!baseUrl) {
+				baseUrl = "http://localhost:11434"
+			}
+			if (!token) {
+				token = ""
+			}
+			if (!URL.canParse(baseUrl)) {
+				return []
+			}
+			const response = await axios.get(`${baseUrl}/openapi/chat/v1/models`, {
+				headers: {
+					"x-generative-ai-client": token,
+				},
+			})
+			const models: { id: string; name: string }[] = []
+			for (let model of response.data) {
+				models.push({ id: String(model.modelId), name: model.modelName })
+			}
+			return models
+		} catch (error) {
+			return [{ id: "error", name: "error" }]
 		}
 	}
 
